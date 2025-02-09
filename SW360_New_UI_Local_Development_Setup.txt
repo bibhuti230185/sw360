@@ -1,0 +1,209 @@
+New UI Setup
+
+1. SW360 VM Workspace setup steps :
+
+	a. Download and Install VMware Workstation Player 17.
+	b. Download Ubuntu ubuntu-24.X.X-desktop-amd64.iso image and setup the system.
+
+
+2. Create folder and clone sw360 github repo
+
+	a. sudo apt install git
+	b. git clone https://github.com/eclipse-sw360/sw360.git (Backend Repo)
+	c. git clone git@github.com:eclipse-sw360/sw360-frontend.git (Front End Repo)
+
+3. Install thrift
+
+	sudo apt update
+	sudo apt install curl
+	sudo apt-get install cmake
+	sudo apt-get update
+	sudo apt-get install build-essential
+	sudo apt-get install automake bison flex g++ git libboost-all-dev libevent-dev libssl-dev libtool make pkg-config
+	./scripts/install-thrift.sh
+
+    To check thrift version : thrift -version
+
+4. Install Postgres:
+	
+	sudo apt-get install -y wget gnupg
+	wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+	sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+	sudo DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-14 --no-install-recommends
+	
+	Switch to the PostgreSQL user: sudo su postgres
+	Access the PostgreSQL console: psql
+	Execute the following SQL commands:
+	sudo su postgres
+	psql -U postgres -c "CREATE DATABASE keycloak;"
+	psql -U postgres -c "CREATE USER keycloak WITH ENCRYPTED PASSWORD 'password';"
+	psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;"
+	
+	To Check version : psql -V
+	To Exit : exit
+	
+	Useful cmds:
+	sudo su postgres
+	 \l
+	psql keycloak
+	psql keycloak
+	\c keycloak
+	\dt  - list the tables
+	
+5. Download Tomcat 11.x.x in /opt
+
+6. Install jdk 21 and setup java and Maven
+
+	sudo add-apt-repository ppa:openjdk-r/ppa
+	sudo apt-get update
+	sudo apt install openjdk-21-jdk
+
+  	check java version : java –version
+	Setup java home : export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+	Verify java home : echo $JAVA_HOME
+
+7. Install Maven
+
+	cd /opt/
+	sudo wget https://dlcdn.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz
+	sudo tar -xf apache-maven-3.9.6-bin.tar.gz
+	sudo mv apache-maven-3.9.6/ apache-maven/
+	sudo update-alternatives --install /usr/bin/mvn maven /opt/apache-maven/bin/mvn 1001
+
+    Configuring Apache Maven Environment : Create a new file
+
+	cd /etc/profile.d/
+	sudo gedit maven.sh
+
+	Paste the below environment   variables in the file and save
+
+    # Apache Maven Environment Variables
+	# MAVEN_HOME for Maven 1 - M2_HOME for Maven 2
+    export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+	export M2_HOME=/opt/apache-maven
+	export MAVEN_HOME=/opt/apache-maven
+	export PATH=${M2_HOME}/bin:${PATH}
+
+	sudo chmod +x maven.sh
+	source maven.sh
+
+   	check mvn version : mvn -version
+
+8. Install Couch db
+
+	sudo apt install -y curl apt-transport-https gnupg
+	curl https://couchdb.apache.org/repo/keys.asc | gpg --dearmor | sudo tee /usr/share/keyrings/couchdb-archive-keyring.gpg >/dev/null 2>&1
+	echo "deb [signed-by=/usr/share/keyrings/couchdb-archive-keyring.gpg] https://apache.jfrog.io/artifactory/couchdb-deb/ jammy main" | sudo tee /etc/apt/sources.list.d/couchdb.list >/dev/null
+	echo "deb http://archive.ubuntu.com/ubuntu/ jammy main universe" | sudo tee /etc/apt/sources.list.d/jammy.list
+	sudo apt update
+	sudo apt install -y couchdb
+	
+	provide username password :
+	for ex :
+
+       username : admin
+       password : 12345
+       verify couchdb installed:
+       curl http://127.0.0.1:5984
+       URL for CouchDB Fauxton in localhost.
+       http://localhost:5984/_utils/  
+
+9. Create directory in /etc :
+
+	cd etc
+	sudo mkdir sw360
+	sudo chmod 777 sw360 -R
+	copy files present  to /etc/sw360 and replace with correct couch db username and password in couchdb.properties and couchdb-test.properties and in application.yml file of authorization folder
+	
+	
+12. Maven build: To build sw360 project :
+
+	Navigate to the folder where sw360 project is cloned and run the below command.
+	mvn clean install -DskipTests -Dbase.deploy.dir=/opt/apache-tomcat-11.x.x/ -Dlistener.deploy.dir=/opt/keycloak-26.x.x/providers -P deploy
+	
+	
+13. Tomcat start / stop:
+
+	cd /opt/apache-tomcat-11.x.x/bin
+	sudo ./shutdown.sh
+	sudo ./startup.sh
+	
+14. Tomcat start / stop in debug mode:
+
+	cd /opt/apache-tomcat-11.x.x/bin
+	Start : sudo ./catalina.sh jpda start
+	Stop : sudo ./catalina.sh jpda stop
+	Open eclipse Setup remote debug configuration in eclipse
+	Right click on project-->select Debug as → select debug configuration → Select Remote Java Application → Select New Cofiguration→ Click Source → Click Add →  Click Java Project →  Select all projects→ Apply→ Debug
+	Run debug mode
+	
+	
+15. Keyclock Setup:
+
+	Download Keycloak 26.0.5 from the official repository.
+	Or download the tar file wget https://github.com/keycloak/keycloak/releases/download/26.0.5/keycloak-26.0.5.tar.gz
+	Extract the downloaded file to the /opt folder, sudo tar -xvf myfiles.tar -C /opt
+	Goto keycloak conf folder and uncomment the following from keycloak.conf file:
+	
+	# Database
+
+	# The database vendor.
+	db=postgres
+
+	# The username of the database user.
+	db-username=keycloak
+
+	# The password of the database user.
+	db-password=password
+
+	# The full database JDBC URL. If not provided, a default URL is set based on the selected database vendor.
+	db-url=jdbc:postgresql://localhost/keycloak
+
+	Set environment variables for Keycloak administration:
+	export KEYCLOAK_ADMIN=admin
+	export KEYCLOAK_ADMIN_PASSWORD=admin
+																					Frontend Setup
+																					
+15. git clone git@github.com:eclipse-sw360/sw360-frontend.git (Front End Repo)
+
+	Create .env file inside the repository and add the following data:
+	
+	NEXTAUTH_SECRET = 'secret'
+	NEXT_PUBLIC_SW360_API_URL = 'http://localhost:8080'
+	NEXTAUTH_URL='http://localhost:3000'
+	NEXT_PUBLIC_SW360_REST_CLIENT_ID='trusted-sw360-client'
+	NEXT_PUBLIC_SW360_REST_CLIENT_SECRET='sw360-secret'
+	NEXT_PUBLIC_ENABLE_SW360_OAUTH_PROVIDER='true'
+	#possible values are sw360basic, sw360oauth, keycloak
+	#NEXT_PUBLIC_SW360_AUTH_PROVIDER='keycloak'
+	SW360_KEYCLOAK_CLIENT_ID=
+	SW360_KEYCLOAK_CLIENT_SECRET=
+	AUTH_ISSUER=http://localhost:8083/realms/sw360
+
+
+	Get SW360_KEYCLOAK_CLIENT_ID and SW360_KEYCLOAK_CLIENT_SECRET from Keycloak console
+	SW360_KEYCLOAK_CLIENT_ID will be present in your client's Settings page.
+	SW360_KEYCLOAK_CLIENT_SECRET will be present in your clients's Credentials page
+	
+	For Keyclock comment these 3 keys 
+	#NEXT_PUBLIC_SW360_REST_CLIENT_ID='trusted-sw360-client'
+	#NEXT_PUBLIC_SW360_REST_CLIENT_SECRET='sw360-secret'
+	#NEXT_PUBLIC_ENABLE_SW360_OAUTH_PROVIDER='true'
+	and uncomment NEXT_PUBLIC_SW360_AUTH_PROVIDER and change value to 'keyclock'
+	
+16. Install NVM
+
+	Installs NVM (Node Version Manager) curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.4/install.sh | bash
+	Download and Install Node.js nvm install 20.5.1
+	Verifies the right Node.js version is in the environment node -v # should print v20.5.1
+	Verifies the right NPM version is in the environment npm -v # should print 10.2.4
+	Installs next npm install next@latest react@latest react-dom@latest
+	
+	npm install -g pnpm@latest-10
+	pnpm install
+	
+	To start front end navigate to frontend project and run this command:
+	pnpm run dev
+	
+	Disable CORS error
+	/usr/bin/google-chrome-stable --disable-web-security --user-data-dir="/home/${USER}/cors" --allow-file-access-from-files
